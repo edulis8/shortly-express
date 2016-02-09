@@ -32,18 +32,12 @@ app.use(session({
 }));
 
 
-/////// Login //////////////
+/////// Login /////////////////
 app.get('/', 
 function(req, res) {
-  //check if user is logged in -> if(req.session.username)
-  if(req.session.username) {
-    res.render('index');
-  } else {
-  //if not redirect to /login -> else
-  //req.session.test = "i am inside session";
-    res.redirect('/login');
-  }
-  //res.redirect('/login');
+  util.isLoggedIn(req, res, function(response){
+    response.render('index');
+  });
 });
 
 app.get('/login', 
@@ -60,19 +54,19 @@ function(req, res) {
     if(!user) {
       // user not found, go sign up
       console.log('Account not found! Please sign up.', user);
+      // todo: popup or alert msg/div
       res.redirect('/login'); // shouldn't this be signup?
     } else {
       // user found in database
         // save username in session
-      req.session.username = user.attributes.username;
-      //util.createSession();
+      util.createSession(req, user);
       // proceed to app:
       res.redirect('/');
     }
   });
 });
-/////////////////////
-////// Sign up///////
+//////////////////////////////
+////// Sign up/////////////////
 app.get('/signup', 
 function(req, res) {
   res.render('signup');
@@ -80,37 +74,50 @@ function(req, res) {
 
 app.post('/signup',
 function(req, res){
-  // create a user
-  // store in db
-  console.log(req.body);
-  var user = new User({ 
+  new User({
     username : req.body.username,
     password : req.body.password
-  });
-  user.save().then(function(newUser){
-    Users.add(newUser);
-    // todo: save in session
-    //res.status(201);
-    res.redirect('/'); //change?
+  }).fetch().then(function(user){
+    if(user){
+      console.log('You are already signed up. Please log in.');
+      res.redirect('/login');
+    } else {
+      console.log(req.body);
+      var newUser = new User({ 
+        username : req.body.username,
+        password : req.body.password
+      });
+
+      newUser.save().then(function(newUser){
+        Users.add(newUser);
+        // todo: save in session
+        util.createSession(req, newUser);
+        res.redirect('/'); 
+      });
+      
+    }
   });
 });
 /////////////////////////
 
 app.get('/create', 
 function(req, res) {
+  util.isLoggedIn(req, res, function(response){
+    response.render('index');
+  });
   //check if user is logged in
   //res.render('index');
   //redirect if user isnt logged in
-  res.redirect('login');
+  //res.redirect('login');
 });
 
 app.get('/links', 
 function(req, res) {
   // if logged in:
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  // else: 
-  // res.redirect('login');
+  util.isLoggedIn(req, res, function(response){
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
   });
 });
 
@@ -145,6 +152,13 @@ function(req, res) {
         });
       });
     }
+  });
+});
+
+app.get('/logout',
+function(req, res) {
+  req.session.destroy(function() {
+    res.redirect('/');
   });
 });
 
@@ -185,3 +199,5 @@ app.get('/*', function(req, res) {
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
+
+
