@@ -43,13 +43,11 @@ function(req, res) {
   //req.session.test = "i am inside session";
     res.redirect('/login');
   }
-  console.log('/ get', req.session);
   //res.redirect('/login');
 });
 
 app.get('/login', 
 function(req, res) {
-  console.log('/login get', req.session);
   res.render('login');
 });
 
@@ -60,16 +58,15 @@ function(req, res) {
     password : req.body.password
   }).fetch().then(function(user) {
     if(!user) {
+      // user not found, go sign up
       console.log('Account not found! Please sign up.', user);
-      res.redirect('/login');
+      res.redirect('/login'); // shouldn't this be signup?
     } else {
-      // todo: save in session
-      console.log('USER', user);
-      console.log('USER.at.username', user.attributes.username);
+      // user found in database
+        // save username in session
       req.session.username = user.attributes.username;
-      console.log('SEssion after username addition', req.session);
-
       //util.createSession();
+      // proceed to app:
       res.redirect('/');
     }
   });
